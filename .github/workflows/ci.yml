@@ -1,0 +1,36 @@
+# Kit inerte : copier sous .github/workflows/ci.yml uniquement dans le dépôt de DÉMO PUBLIC approuvé.
+name: KERIANH OpenHands demo CI
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: kerianh-demo-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    if: github.event.pull_request.head.repo.full_name == github.repository
+    name: Trusted demo oracle (no secrets)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted base
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: trusted
+          persist-credentials: false
+      - name: Checkout proposed code
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6.1.0
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          path: candidate
+          persist-credentials: false
+      - name: Execute pre-established external oracle
+        run: python3 -I -B trusted/ci/verify_candidate.py candidate
+      - name: Confirm restricted scope
+        run: echo 'GITHUB_HOSTED_ONLY=YES; NO_SECRET=YES; NO_DEPLOY=YES; MERGE=NO'
